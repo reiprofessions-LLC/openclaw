@@ -15,10 +15,17 @@ from typing import Optional
 from miles.config.brokers import get_broker_sop
 from miles.deals.models import BrokerContact, Deal, DealStage
 from miles.notifications.templates import (
+    render_analysis_required_notice,
     render_document_request,
     render_full_package_blocked_notice,
 )
-from miles.workflows.guards import GateResult, evaluate_gate, may_send_full_details
+from miles.workflows.guards import (
+    GateResult,
+    evaluate_gate,
+    get_pending_analysis_metrics,
+    is_analysis_complete,
+    may_send_full_details,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +56,8 @@ class RoutingDecision:
     gate_result: GateResult
     outbound_messages: list[str] = field(default_factory=list)
     full_details_allowed: bool = True
+    analysis_required: bool = False
+    analysis_complete: bool = True
     supabase_playbook_slug: Optional[str] = None
 
 
@@ -101,12 +110,28 @@ def route_inbound_deal(
             gate.playbook_slug,
         )
     else:
-        if deal.stage == DealStage.PENDING_DOCUMENTS:
-            deal.advance_to(DealStage.QUALIFIED)
+        if deal.stage in (DealStage.RECEIVED, DealStage.PENDING_DOCUMENTS):
+            if gate.analysis_frame is not None and not gate.analysis_complete:
+                deal.advance_to(DealStage.ANALYSIS_REQUIRED)
+            else:
+                deal.advance_to(DealStage.QUALIFIED)
         logger.info(
             "Deal %s from broker %s — gate cleared, may proceed.",
             deal.deal_id,
             deal.broker.name if deal.broker else "unknown",
+        )
+
+    has_analysis = gate.analysis_frame is not None
+    analysis_done = gate.analysis_complete
+
+    if gate.cleared and has_analysis and not analysis_done:
+        pending_metrics = get_pending_analysis_metrics(deal)
+        messages.append(
+            render_analysis_required_notice(
+                broker_name=deal.broker.name if deal.broker else "Broker",
+                frame_label=gate.analysis_frame.frame_of_reference.value,
+                pending_metrics=[m.value for m in pending_metrics],
+            )
         )
 
     return RoutingDecision(
@@ -114,6 +139,8 @@ def route_inbound_deal(
         gate_result=gate,
         outbound_messages=messages,
         full_details_allowed=full_ok,
+        analysis_required=has_analysis,
+        analysis_complete=analysis_done,
         supabase_playbook_slug=gate.playbook_slug,
     )
 

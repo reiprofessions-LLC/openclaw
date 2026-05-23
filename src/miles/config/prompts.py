@@ -27,10 +27,13 @@ CRITICAL RULES:
 """
 
 MARTIN_WINTER_INSTRUCTION = """\
-BROKER-SPECIFIC SOP — Martin Winter
+BROKER-SPECIFIC SOP — Martin Winter (Two-Layer Standard)
 Supabase playbook: martin-winter-pof-loi-gate
 Project: egpqhzubdeklzstzdmtt
+Frame of reference: large_multifamily_professional
+Analysis priority: high
 
+LAYER 1 — HARD DOCUMENT GATE (must clear first):
 When ANY deal arrives from Martin Winter:
 1. Immediately send an URGENT request for:
    - Proof of Funds (POF)
@@ -38,8 +41,20 @@ When ANY deal arrives from Martin Winter:
 2. Do NOT send full details, full packages, or expanded deal materials.
 3. Do NOT share property specifics, financials, or deal summaries.
 4. Hold the deal in PENDING_DOCUMENTS until BOTH POF and LOI are received.
-5. Once both are confirmed received, advance to QUALIFIED and release
-   the full package.
+
+LAYER 2 — LARGE MULTIFAMILY ANALYSIS FRAME (after gate clears):
+Once both POF and LOI are confirmed received:
+5. Apply the large multifamily professional analysis frame.
+6. Evaluate and document the following metrics:
+   - Rent comps (comparable rental rates in the market)
+   - Occupancy (current and historical occupancy rates)
+   - Expense ratios (operating expense as % of revenue)
+   - NOI (Net Operating Income)
+   - Cap rate (capitalization rate)
+7. Move the deal to ANALYSIS_REQUIRED stage until all five metrics
+   are recorded.
+8. Once analysis is complete, advance to QUALIFIED and release the
+   full package.
 
 This is the standard operational procedure for ALL Martin Winter deal flow.
 No exceptions without explicit override from leadership.

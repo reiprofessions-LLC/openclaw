@@ -54,3 +54,32 @@ def render_gate_cleared_notice(broker_name: str) -> str:
         f"All required documents received from {broker_name}.\n"
         f"The deal is now cleared to proceed — full package may be sent."
     )
+
+
+def render_analysis_required_notice(
+    broker_name: str,
+    frame_label: str,
+    pending_metrics: list[str],
+) -> str:
+    """Build a notice listing the analysis metrics still needed."""
+    metrics_list = ", ".join(pending_metrics)
+    return (
+        f"ANALYSIS REQUIRED for {broker_name} deal.\n"
+        f"Frame of reference: {frame_label}\n"
+        f"Pending metrics: {metrics_list}\n\n"
+        f"Per SOP, all analysis metrics must be evaluated before "
+        f"the full deal package can be released."
+    )
+
+
+def render_analysis_complete_notice(
+    broker_name: str,
+    frame_label: str,
+) -> str:
+    """Build a confirmation that the analysis frame is complete."""
+    return (
+        f"Analysis complete for {broker_name} deal.\n"
+        f"Frame: {frame_label}\n"
+        f"All required metrics have been evaluated. "
+        f"The deal is now fully qualified for package release."
+    )

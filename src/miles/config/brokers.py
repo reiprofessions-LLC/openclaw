@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
-from miles.deals.models import DocumentType
+from miles.deals.models import AnalysisMetric, DocumentType, FrameOfReference
 
 
 @dataclass(frozen=True)
@@ -21,6 +21,20 @@ class GateRequirement:
     document_type: DocumentType
     urgent: bool = False
     request_message: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class AnalysisFrameConfig:
+    """Secondary analysis requirements for a broker's deals.
+
+    Specifies the frame of reference and the metrics that must be
+    evaluated when analyzing deals from this broker.
+    """
+
+    frame_of_reference: FrameOfReference
+    required_metrics: tuple[AnalysisMetric, ...]
+    analysis_priority: str = "standard"
+    description: str = ""
 
 
 @dataclass(frozen=True)
@@ -37,6 +51,9 @@ class BrokerSOP:
     block_full_details_until_gate_cleared:
         When ``True``, the router will refuse to send full details until
         every document in ``gate_documents`` has been received.
+    analysis_frame:
+        Secondary analysis frame applied after the document gate clears.
+        ``None`` means no special analysis requirements.
     notes:
         Free-form operational notes for team reference.
     """
@@ -44,6 +61,7 @@ class BrokerSOP:
     broker_name: str
     gate_documents: tuple[GateRequirement, ...] = ()
     block_full_details_until_gate_cleared: bool = True
+    analysis_frame: Optional[AnalysisFrameConfig] = None
     notes: str = ""
 
 
@@ -77,6 +95,23 @@ def list_broker_sops() -> list[BrokerSOP]:
 # Martin Winter SOP
 # ---------------------------------------------------------------------------
 
+MARTIN_WINTER_ANALYSIS_FRAME = AnalysisFrameConfig(
+    frame_of_reference=FrameOfReference.LARGE_MULTIFAMILY_PROFESSIONAL,
+    required_metrics=(
+        AnalysisMetric.RENT_COMPS,
+        AnalysisMetric.OCCUPANCY,
+        AnalysisMetric.EXPENSE_RATIOS,
+        AnalysisMetric.NOI,
+        AnalysisMetric.CAP_RATE,
+    ),
+    analysis_priority="high",
+    description=(
+        "Large multifamily professional analysis frame. Evaluate "
+        "rent comps, occupancy, expense ratios, NOI, and cap rate "
+        "for all Martin Winter deals once the POF/LOI gate clears."
+    ),
+)
+
 MARTIN_WINTER_SOP = BrokerSOP(
     broker_name="Martin Winter",
     gate_documents=(
@@ -100,11 +135,14 @@ MARTIN_WINTER_SOP = BrokerSOP(
         ),
     ),
     block_full_details_until_gate_cleared=True,
+    analysis_frame=MARTIN_WINTER_ANALYSIS_FRAME,
     notes=(
         "Standard operating procedure for all Martin Winter deal flow. "
-        "Every deal from Martin Winter must trigger an urgent request for "
-        "POF and LOI first. Do NOT send full details, full packages, or "
-        "expanded deal materials until both POF and LOI are received."
+        "Layer 1: Every deal must trigger an urgent request for POF and "
+        "LOI first — no full details until both are received. "
+        "Layer 2: Once gate clears, apply large multifamily professional "
+        "analysis frame (rent comps, occupancy, expense ratios, NOI, "
+        "cap rate) before releasing the full package."
     ),
 )
 

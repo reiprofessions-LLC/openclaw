@@ -28,16 +28,22 @@ class PlaybookRef:
     slug: str
     name: str
     description: str = ""
+    frame_of_reference: Optional[str] = None
+    analysis_priority: Optional[str] = None
 
 
 MARTIN_WINTER_PLAYBOOK = PlaybookRef(
     slug="martin-winter-pof-loi-gate",
     name="Martin Winter POF/LOI Gate",
     description=(
-        "Hard gate for all inbound Martin Winter deals. "
-        "Requires Proof of Funds and Letter of Intent before "
-        "any full details or packages are released."
+        "Two-layer SOP for Martin Winter deals. "
+        "Layer 1: Hard gate requiring POF and LOI before any full "
+        "details or packages are released. "
+        "Layer 2: Large multifamily professional analysis frame "
+        "(rent comps, occupancy, expense ratios, NOI, cap rate)."
     ),
+    frame_of_reference="large_multifamily_professional",
+    analysis_priority="high",
 )
 
 _PLAYBOOK_REGISTRY: dict[str, PlaybookRef] = {

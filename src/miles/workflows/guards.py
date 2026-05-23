@@ -11,8 +11,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
-from miles.config.brokers import BrokerSOP, GateRequirement, get_broker_sop
-from miles.deals.models import Deal, DealStage, DocumentType
+from miles.config.brokers import (
+    AnalysisFrameConfig,
+    BrokerSOP,
+    GateRequirement,
+    get_broker_sop,
+)
+from miles.deals.models import AnalysisMetric, Deal, DealStage, DocumentType
 
 
 @dataclass
@@ -22,6 +27,14 @@ class PendingAction:
     document_type: DocumentType
     urgent: bool
     request_message: str
+
+
+@dataclass
+class AnalysisRequirement:
+    """An analysis metric that must be evaluated for a deal."""
+
+    metric: AnalysisMetric
+    satisfied: bool
 
 
 @dataclass
@@ -38,12 +51,23 @@ class GateResult:
         The SOP that was evaluated, or ``None`` for default-pipeline deals.
     playbook_slug:
         Supabase ``process_playbooks`` slug governing this gate, if any.
+    analysis_frame:
+        Secondary analysis frame config, if the broker has one.
+    analysis_requirements:
+        Per-metric status for the analysis frame.
+    analysis_complete:
+        ``True`` when all analysis metrics are satisfied (or no frame).
     """
 
     cleared: bool
     pending_actions: list[PendingAction] = field(default_factory=list)
     broker_sop: Optional[BrokerSOP] = None
     playbook_slug: Optional[str] = None
+    analysis_frame: Optional[AnalysisFrameConfig] = None
+    analysis_requirements: list[AnalysisRequirement] = field(
+        default_factory=list
+    )
+    analysis_complete: bool = True
 
 
 def evaluate_gate(deal: Deal) -> GateResult:
@@ -74,11 +98,26 @@ def evaluate_gate(deal: Deal) -> GateResult:
 
     playbook_slug = _resolve_playbook_slug(sop)
 
+    analysis_frame = sop.analysis_frame
+    analysis_reqs: list[AnalysisRequirement] = []
+    analysis_ok = True
+    if analysis_frame is not None:
+        for metric in analysis_frame.required_metrics:
+            satisfied = deal.has_analysis_metric(metric)
+            analysis_reqs.append(
+                AnalysisRequirement(metric=metric, satisfied=satisfied)
+            )
+            if not satisfied:
+                analysis_ok = False
+
     return GateResult(
         cleared=len(pending) == 0,
         pending_actions=pending,
         broker_sop=sop,
         playbook_slug=playbook_slug,
+        analysis_frame=analysis_frame,
+        analysis_requirements=analysis_reqs,
+        analysis_complete=analysis_ok,
     )
 
 
@@ -96,6 +135,26 @@ def may_send_full_details(deal: Deal) -> bool:
     if not result.broker_sop.block_full_details_until_gate_cleared:
         return True
     return result.cleared
+
+
+def get_pending_analysis_metrics(deal: Deal) -> list[AnalysisMetric]:
+    """Return analysis metrics that have not yet been satisfied.
+
+    Returns an empty list when the broker has no analysis frame or when
+    all metrics are already recorded on the deal.
+    """
+    result = evaluate_gate(deal)
+    return [
+        req.metric
+        for req in result.analysis_requirements
+        if not req.satisfied
+    ]
+
+
+def is_analysis_complete(deal: Deal) -> bool:
+    """Return ``True`` when the deal's analysis frame is fully satisfied."""
+    result = evaluate_gate(deal)
+    return result.analysis_complete
 
 
 # ---------------------------------------------------------------------------
