@@ -74,7 +74,7 @@ _BROKER_SOPS: dict[str, BrokerSOP] = {}
 
 def register_broker_sop(sop: BrokerSOP) -> None:
     """Add or replace a broker SOP in the registry."""
-    _BROKER_SOPS[sop.broker_name.lower()] = sop
+    _BROKER_SOPS[sop.broker_name.strip().lower()] = sop
 
 
 def get_broker_sop(broker_name: str) -> Optional[BrokerSOP]:
