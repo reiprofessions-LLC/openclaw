@@ -110,7 +110,7 @@ def route_inbound_deal(
             gate.playbook_slug,
         )
     else:
-        if deal.stage in (DealStage.RECEIVED, DealStage.PENDING_DOCUMENTS):
+        if deal.stage in (DealStage.RECEIVED, DealStage.PENDING_DOCUMENTS, DealStage.ANALYSIS_REQUIRED):
             if gate.analysis_frame is not None and not gate.analysis_complete:
                 deal.advance_to(DealStage.ANALYSIS_REQUIRED)
             else:

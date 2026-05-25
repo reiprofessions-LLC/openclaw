@@ -353,6 +353,35 @@ class TestDealRouter(unittest.TestCase):
         self.assertTrue(result.analysis_complete)
         self.assertEqual(result.deal.stage, DealStage.QUALIFIED)
 
+    def test_full_two_step_workflow_pending_to_analysis_to_qualified(self) -> None:
+        """Reproduce the exact two-step lifecycle:
+        RECEIVED -> PENDING_DOCUMENTS -> ANALYSIS_REQUIRED -> QUALIFIED
+        """
+        # Step 1: new deal arrives, gated
+        deal = Deal(
+            property_address="100 Unit Complex",
+            broker=BrokerContact(name="Martin Winter"),
+        )
+        r1 = route_inbound_deal(deal)
+        self.assertEqual(r1.deal.stage, DealStage.PENDING_DOCUMENTS)
+        self.assertFalse(r1.full_details_allowed)
+
+        # Step 2: POF + LOI received, should move to ANALYSIS_REQUIRED
+        deal.record_document(DocumentType.PROOF_OF_FUNDS)
+        deal.record_document(DocumentType.LETTER_OF_INTENT)
+        r2 = route_inbound_deal(deal)
+        self.assertEqual(r2.deal.stage, DealStage.ANALYSIS_REQUIRED)
+        self.assertTrue(r2.full_details_allowed)
+        self.assertFalse(r2.analysis_complete)
+
+        # Step 3: all analysis metrics recorded, should advance to QUALIFIED
+        for metric in AnalysisMetric:
+            deal.set_analysis_value(metric, "value")
+        r3 = attempt_release_full_package(deal)
+        self.assertEqual(r3.deal.stage, DealStage.QUALIFIED)
+        self.assertTrue(r3.full_details_allowed)
+        self.assertTrue(r3.analysis_complete)
+
     def test_other_broker_deal_passes_through(self) -> None:
         deal = Deal(
             property_address="456 Oak Ave",
